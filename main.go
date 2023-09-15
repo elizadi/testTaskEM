@@ -37,12 +37,12 @@ func main() {
 	}
 	dsn := fmt.Sprintf("host=%s user=postgres password=123456789Lis port=5432 sslmode=disable", dbUrl)
 
-	host:= os.Getenv("host")
+	host := os.Getenv("host")
 	if dbUrl == "" {
 		log.Fatalf("set host in env file")
 	}
 
-	port:= os.Getenv("port")
+	port := os.Getenv("port")
 	if dbUrl == "" {
 		log.Fatalf("set port in env file")
 	}

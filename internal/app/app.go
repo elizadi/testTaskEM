@@ -1,12 +1,16 @@
 package app
 
 import (
+	"effective_mobile/internal/delivery/graphql"
 	delivery "effective_mobile/internal/delivery/http"
 	"effective_mobile/internal/repository/enrichment"
 	"effective_mobile/internal/repository/user"
 	"effective_mobile/internal/usecase"
+	"fmt"
 	"log"
+	"strconv"
 
+	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
@@ -37,11 +41,14 @@ func Run(ageUrl, genderUrl, countryUrl, dsn, host, port string) {
 		log.Fatalf("Cannot create usecase")
 	}
 
-	server, err := delivery.NewServer(useCase, host, port)
+	router := gin.Default()
+	graphql.Register(useCase, router)
+	delivery.Register(useCase, router)
+	intPort, err := strconv.Atoi(port)
 	if err != nil {
-		log.Fatalf("Cannot create server")
+		log.Fatalf("Cannot parse port")
 	}
-	err = server.Run()
+	err = router.Run(fmt.Sprintf("%s:%d", host, intPort))
 	if err != nil {
 		log.Fatalf("server fall")
 	}

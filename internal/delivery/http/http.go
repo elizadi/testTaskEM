@@ -3,33 +3,13 @@ package delivery
 import (
 	"effective_mobile/internal/domain"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
-type server struct {
-	usecase domain.UseCase
-	host string
-	port int
-}
-
-func NewServer(usecase domain.UseCase, host, port string) (domain.Server, error) {
-	intPort, err := strconv.Atoi(port)
-	if err != nil {
-		return nil, err
-	}
-	return &server{
-		usecase: usecase,
-		host:    host,
-		port:    intPort,
-	}, nil
-}
-
-func (s *server) Run() error {
-	router := gin.Default()
+func Register(uc domain.UseCase, router *gin.Engine) {
 	router.POST("/user", func(ctx *gin.Context) {
 		name := ctx.Query("name")
 		if name == "" {
@@ -46,7 +26,7 @@ func (s *server) Run() error {
 			ctx.JSON(http.StatusBadRequest, errors.New("empty parameter"))
 			return
 		}
-		user, err := s.usecase.CreateUser(name, surname, patronymic)
+		user, err := uc.CreateUser(name, surname, patronymic)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, "")
 			return
@@ -55,7 +35,7 @@ func (s *server) Run() error {
 	})
 
 	router.GET("/user", func(ctx *gin.Context) {
-		users, err := s.usecase.GetUsers()
+		users, err := uc.GetUsers()
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, "")
 			return
@@ -83,13 +63,12 @@ func (s *server) Run() error {
 			ctx.JSON(http.StatusBadRequest, err)
 			return
 		}
-		
-		users, err := s.usecase.GetUsersWithPagination(uint(pageInt), uint(perPageInt))
+
+		users, err := uc.GetUsersWithPagination(uint(pageInt), uint(perPageInt))
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, "")
 			return
 		}
 		ctx.JSON(http.StatusOK, users)
 	})
-	return router.Run(fmt.Sprintf("%s:%d", s.host, s.port))
 }
