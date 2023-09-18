@@ -3,9 +3,19 @@
 package model
 
 type User struct {
-	ID         *string `json:"ID,omitempty"`
-	Name       string  `json:"Name"`
-	Surname    string  `json:"Surname"`
+	ID         int    `json:"ID"`
+	Name       string `json:"Name"`
+	Surname    string `json:"Surname"`
+	Patronymic string `json:"Patronymic"`
+	Age        int    `json:"Age"`
+	Gender     string `json:"Gender"`
+	Country    string `json:"Country"`
+}
+
+type UserIn struct {
+	ID         int     `json:"ID"`
+	Name       *string `json:"Name,omitempty"`
+	Surname    *string `json:"Surname,omitempty"`
 	Patronymic *string `json:"Patronymic,omitempty"`
 	Age        *int    `json:"Age,omitempty"`
 	Gender     *string `json:"Gender,omitempty"`

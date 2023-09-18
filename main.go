@@ -7,11 +7,8 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
+	"github.com/sirupsen/logrus"
 )
-
-// type server struct {
-// 	uc domain.UseCase
-// }
 
 func main() {
 	err := godotenv.Load(".env")
@@ -35,7 +32,15 @@ func main() {
 	if dbUrl == "" {
 		log.Fatalf("set database in env file")
 	}
-	dsn := fmt.Sprintf("host=%s user=postgres password=123456789Lis port=5432 sslmode=disable", dbUrl)
+	user := os.Getenv("user")
+	if dbUrl == "" {
+		log.Fatalf("set user in env file")
+	}
+	password := os.Getenv("password")
+	if dbUrl == "" {
+		log.Fatalf("set password in env file")
+	}
+	dsn := fmt.Sprintf("host=%s user=%s password=%s port=5432 sslmode=disable", dbUrl, user, password)
 
 	host := os.Getenv("host")
 	if dbUrl == "" {
@@ -46,5 +51,7 @@ func main() {
 	if dbUrl == "" {
 		log.Fatalf("set port in env file")
 	}
-	app.Run(ageUrl, genderUrl, countryUrl, dsn, host, port)
+	logger := logrus.New()
+	logger.SetLevel(logrus.TraceLevel)
+	app.Run(ageUrl, genderUrl, countryUrl, dsn, host, port, logger)
 }

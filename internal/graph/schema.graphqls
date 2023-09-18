@@ -3,9 +3,19 @@
 # https://gqlgen.com/getting-started/
 
 type User {
-  	ID:         ID
+  	ID:         Int!
 	Name:       String!
 	Surname:    String!
+	Patronymic: String!
+	Age:        Int!
+	Gender:     String!
+	Country:    String!
+}
+
+input UserIn {
+  	ID:         Int!
+	Name:       String
+	Surname:    String
 	Patronymic: String
 	Age:        Int
 	Gender:     String
@@ -14,4 +24,10 @@ type User {
 
 type Query {
   users: [User!]!
+}
+
+type Mutation {
+  CreateUser(Name: String!, Surname: String!, Patronymic: String!): User!
+  DeleteUser(ID: Int!): String!
+  UpdateUser(user: UserIn!): User!
 }

@@ -9,6 +9,52 @@ import (
 	"effective_mobile/internal/graph/model"
 )
 
+// CreateUser is the resolver for the CreateUser field.
+func (r *mutationResolver) CreateUser(ctx context.Context, name string, surname string, patronymic string) (*model.User, error) {
+	user, err := r.UseCase.CreateUser(name, surname, patronymic)
+	if err != nil {
+		return nil, err
+	}
+	createdUser := model.User{
+		ID:         int(user.ID),
+		Name:       user.Name,
+		Surname:    user.Surname,
+		Patronymic: user.Patronymic,
+		Age:        int(user.Age),
+		Gender:     user.Gender,
+		Country:    user.Country,
+	}
+	return &createdUser, nil
+}
+
+// DeleteUser is the resolver for the DeleteUser field.
+func (r *mutationResolver) DeleteUser(ctx context.Context, id int) (string, error) {
+	err := r.UseCase.DeleteUser(uint64(id))
+	if err != nil {
+		return "", err
+	}
+	return "Success", nil
+}
+
+// UpdateUser is the resolver for the UpdateUser field.
+func (r *mutationResolver) UpdateUser(ctx context.Context, user model.UserIn) (*model.User, error) {
+	updatableUser := toDomainUser(user)
+	res, err := r.UseCase.UpdateUser(updatableUser.ID, updatableUser)
+	if err != nil {
+		return nil, err
+	}
+	updatedUser := model.User{
+		ID:         int(res.ID),
+		Name:       res.Name,
+		Surname:    res.Surname,
+		Patronymic: res.Patronymic,
+		Age:        int(res.Age),
+		Gender:     res.Gender,
+		Country:    res.Country,
+	}
+	return &updatedUser, nil
+}
+
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
 	users, err := r.UseCase.GetUsers()
@@ -18,7 +64,11 @@ func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
 	return toModelUsers(users), nil
 }
 
+// Mutation returns MutationResolver implementation.
+func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
+
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
+type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }

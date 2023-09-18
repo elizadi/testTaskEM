@@ -2,8 +2,10 @@ package user
 
 import (
 	"effective_mobile/internal/domain"
+	"errors"
 	"fmt"
 
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -19,9 +21,10 @@ type User struct {
 
 type Repository struct {
 	db *gorm.DB
+	log *logrus.Logger
 }
 
-func New(db *gorm.DB) (domain.UserRepository, error) {
+func New(db *gorm.DB, log *logrus.Logger) (domain.UserRepository, error) {
 	if !db.Migrator().HasTable(&User{}) {
 		err := db.Migrator().AutoMigrate(&User{})
 		if err != nil {
@@ -30,6 +33,7 @@ func New(db *gorm.DB) (domain.UserRepository, error) {
 	}
 	return &Repository{
 		db: db,
+		log: log,
 	}, nil
 }
 
@@ -38,6 +42,7 @@ func (r *Repository) GetUsers() ([]domain.User, error) {
 
 	err := r.db.Model(&User{}).Find(&users).Error
 	if err != nil {
+		r.log.Errorln(err)
 		return nil, err
 	}
 	return toDomainUsers(users), nil
@@ -52,6 +57,10 @@ func toDomainUsers(users []User) []domain.User {
 }
 
 func (r *Repository) CreateUser(name, surname, patronymic, gender, countryName string, age uint8) (domain.User, error) {
+	if name == "" || surname == "" {
+		r.log.Errorln("empty parameter")
+		return domain.User{}, errors.New("empty parameter")
+	}
 	user := User{
 		Name:       name,
 		Surname:    surname,
@@ -62,6 +71,7 @@ func (r *Repository) CreateUser(name, surname, patronymic, gender, countryName s
 	}
 	tx := r.db.Create(&user)
 	if tx.Error != nil {
+		r.log.Errorln(tx.Error)
 		fmt.Printf("failed to add %v\n", user)
 		return domain.User{}, tx.Error
 	}
@@ -84,14 +94,17 @@ func (r *Repository) DeleteUser(id uint64) error {
 	}
 	tx := r.db.Delete(user)
 	if tx.Error != nil {
+		r.log.Errorln(tx.Error)
 		return tx.Error
 	}
 	return nil
 }
 
 func (r *Repository) UpdateUser(id uint64, user domain.User) (domain.User, error) {
-	tx := r.db.First(&user, id)
+	checkUser := User{}
+	tx := r.db.First(&checkUser, id)
 	if tx.Error != nil {
+		r.log.Errorln(tx.Error)
 		return domain.User{}, tx.Error
 	}
 	savedUser := User{
@@ -103,10 +116,13 @@ func (r *Repository) UpdateUser(id uint64, user domain.User) (domain.User, error
 		Gender:     user.Gender,
 		Country:    user.Country,
 	}
-	tx = r.db.Save(&savedUser)
+	fmt.Print(savedUser)
+	tx = r.db.Updates(&savedUser)
 	if tx.Error != nil {
+		r.log.Errorln(tx.Error)
 		return domain.User{}, tx.Error
 	}
+	
 	return toDomain(savedUser), nil
 }
 
@@ -122,12 +138,58 @@ func toDomain(savedUser User) domain.User {
 	}
 }
 
-func (r *Repository) GetUsersWithPagination(page, perPage uint) ([]domain.User, error) {
+func (r *Repository) GetUsersWithPagination(req domain.GetUsersReq) (domain.GetUsersResponse, error) {
 	var users []User
-	offset := (page - 1) * perPage
-	err := r.db.Model(&User{}).Limit(int(perPage)).Offset(int(offset)).Find(&users).Error
-	if err != nil {
-		return nil, err
+	db := r.db.
+		Model(&User{})
+	if req.ID != 0 {
+		db.Where("id = ?", req.ID)
 	}
-	return toDomainUsers(users), nil
+	if req.Name != "" {
+		db.Where("name LIKE ?", "%"+req.Name+"%")
+	}
+	if req.Surname != "" {
+		db.Where("surname LIKE ?", "%"+req.Surname+"%")
+	}
+	if req.Patronymic != "" {
+		db.Where("patronymic LIKE ?", "%"+req.Patronymic+"%")
+	}
+	if req.Age != 0 {
+		db.Where("age = ?", req.Age)
+	}
+	if req.Gender != "" {
+		db.Where("gender LIKE ?", "%"+req.Gender+"%")
+	}
+	if req.Country != "" {
+		db.Where("country LIKE ?", "%"+req.Country+"%")
+	}
+	var total int64
+	err := db.Count(&total).Error
+	if err != nil {
+		r.log.Errorln(err)
+		return domain.GetUsersResponse{}, err
+	}
+	err = db.
+		Limit(req.Pag.Limit()).
+		Offset(req.Pag.Offset()).
+		Find(&users).
+		Error
+	if err != nil {
+		r.log.Errorln(err)
+		return domain.GetUsersResponse{}, err
+	}
+
+	pageCount := float64(total / int64(req.Pag.Limit()))
+	odd := total % int64(req.Pag.Limit())
+	if odd > 0 {
+		pageCount++
+	}
+	response := domain.GetUsersResponse{
+		Users: toDomainUsers(users),
+		RespInfo: domain.RespInfo{
+			Total:     total,
+			PageCount: int64(pageCount),
+		},
+	}
+	return response, nil
 }
