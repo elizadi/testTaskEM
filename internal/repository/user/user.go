@@ -107,6 +107,7 @@ func (r *Repository) UpdateUser(id uint64, user domain.User) (domain.User, error
 		r.log.Errorln(tx.Error)
 		return domain.User{}, tx.Error
 	}
+	user = checkNotNil(user, checkUser)
 	savedUser := User{
 		ID:         id,
 		Name:       user.Name,
@@ -192,4 +193,26 @@ func (r *Repository) GetUsersWithPagination(req domain.GetUsersReq) (domain.GetU
 		},
 	}
 	return response, nil
+}
+
+func checkNotNil(user domain.User, checkUser User) domain.User {
+	if user.Name == "" {
+		user.Name = checkUser.Name
+	}
+	if user.Surname == "" {
+		user.Surname = checkUser.Surname
+	}
+	if user.Patronymic == "" {
+		user.Patronymic = checkUser.Patronymic	
+	}
+	if user.Age == 0 {
+		user.Age = checkUser.Age
+	} 
+	if user.Gender == "" {
+		user.Gender = checkUser.Gender
+	} 
+	if user.Country == "" {
+		user.Country = checkUser.Country
+	} 
+	return user
 }
